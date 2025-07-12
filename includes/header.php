@@ -6,7 +6,7 @@ require_once 'functions.php';
 $settings = $db->getRows("SELECT * FROM settings");
 $siteSettings = [];
 foreach ($settings as $setting) {
-    $siteSettings[$setting['setting_key'] = $setting['setting_value'];
+    $siteSettings[$setting['setting_key']] = $setting['setting_value']; // FIXED: Added missing ]
 }
 
 // Get featured courses for navigation
