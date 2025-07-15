@@ -179,7 +179,7 @@ $testimonials = $db->getRows("SELECT * FROM testimonials WHERE featured = 1 ORDE
     </div>
 </section>
 
-<!-- Call to Action -->
+<!-- Call to Action 
 <section class="py-5 bg-primary text-white">
     <div class="container text-center">
         <h2 class="mb-4">Prêt à transformer les compétences de votre équipe?</h2>
@@ -188,7 +188,7 @@ $testimonials = $db->getRows("SELECT * FROM testimonials WHERE featured = 1 ORDE
         <a href="courses.php" class="btn btn-outline-light btn-lg">Explorer nos cours</a>
     </div>
 </section>
-
+-->
 <?php
 require 'includes/footer.php';
 ?>
