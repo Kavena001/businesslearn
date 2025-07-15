@@ -1,5 +1,4 @@
 <?php
-session_start();
 require '../includes/config.php';
 require '../includes/db.php';
 require '../includes/auth.php';
@@ -13,7 +12,11 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $stats = [
     'courses' => $db->getRow("SELECT COUNT(*) as count FROM courses")['count'],
     'enrollments' => $db->getRow("SELECT COUNT(*) as count FROM enrollments")['count'],
-    'messages' => $db->getRow("SELECT COUNT(*) as count FROM messages WHERE status='unread'")['count']
+    'messages' => $db->getRow("SELECT COUNT(*) as count FROM messages WHERE status='unread'")['count'],
+    'recent_enrollments' => $db->getRows("SELECT e.*, c.title as course_title 
+                                         FROM enrollments e 
+                                         JOIN courses c ON e.course_id = c.id 
+                                         ORDER BY e.created_at DESC LIMIT 5")
 ];
 ?>
 <!DOCTYPE html>
@@ -21,125 +24,109 @@ $stats = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Tableau de Bord Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        body {
-            padding-top: 60px;
-            background-color: #f8f9fa;
-        }
-        .sidebar {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            bottom: 0;
-            width: 250px;
-            background: #343a40;
-            color: white;
-            padding: 20px 0;
-        }
-        .main-content {
-            margin-left: 250px;
-            padding: 20px;
-        }
-        .stat-card {
-            transition: transform 0.3s;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-    </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Admin Dashboard</a>
-            <div class="d-flex">
-                <span class="text-white me-3">Welcome, <?= htmlspecialchars($_SESSION['admin_name']) ?></span>
-                <a href="logout.php" class="btn btn-outline-light">Logout</a>
+    <?php include 'includes/navbar.php'; ?>
+    
+    <div class="container mt-4">
+        <h2><i class="bi bi-speedometer2 me-2"></i> Tableau de Bord</h2>
+        
+        <div class="row mt-4">
+            <!-- Courses Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card text-white bg-primary h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title">Cours</h5>
+                                <h2 class="mb-0"><?= $stats['courses'] ?></h2>
+                            </div>
+                            <i class="bi bi-book" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <a href="courses/list.php" class="text-white stretched-link">Voir tous les cours</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Enrollments Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card text-white bg-success h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title">Inscriptions</h5>
+                                <h2 class="mb-0"><?= $stats['enrollments'] ?></h2>
+                            </div>
+                            <i class="bi bi-people" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <a href="enrollments/list.php" class="text-white stretched-link">Voir toutes les inscriptions</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Messages Card -->
+            <div class="col-md-4 mb-4">
+                <div class="card text-white bg-warning h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title">Messages non lus</h5>
+                                <h2 class="mb-0"><?= $stats['messages'] ?></h2>
+                            </div>
+                            <i class="bi bi-envelope" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-top-0">
+                        <a href="messages/list.php" class="text-white stretched-link">Voir tous les messages</a>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
-
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <ul class="nav flex-column">
-            <li class="nav-item">
-                <a class="nav-link active" href="dashboard.php">
-                    <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="courses/">
-                    <i class="bi bi-book me-2"></i> Courses
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="enrollments/">
-                    <i class="bi bi-people me-2"></i> Enrollments
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="messages/">
-                    <i class="bi bi-envelope me-2"></i> Messages
-                </a>
-            </li>
-        </ul>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <h2 class="mb-4">Dashboard Overview</h2>
         
-        <div class="row">
-            <!-- Courses Stat -->
-            <div class="col-md-4 mb-4">
-                <div class="card stat-card bg-primary text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h5 class="card-title">Courses</h5>
-                                <h2><?= $stats['courses'] ?></h2>
-                            </div>
-                            <i class="bi bi-book" style="font-size: 2rem;"></i>
-                        </div>
-                        <a href="courses/" class="text-white stretched-link"></a>
-                    </div>
-                </div>
+        <!-- Recent Enrollments -->
+        <div class="card mt-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i> Inscriptions récentes</h5>
             </div>
-            
-            <!-- Enrollments Stat -->
-            <div class="col-md-4 mb-4">
-                <div class="card stat-card bg-success text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h5 class="card-title">Enrollments</h5>
-                                <h2><?= $stats['enrollments'] ?></h2>
-                            </div>
-                            <i class="bi bi-people" style="font-size: 2rem;"></i>
-                        </div>
-                        <a href="enrollments/" class="text-white stretched-link"></a>
+            <div class="card-body">
+                <?php if (!empty($stats['recent_enrollments'])): ?>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Email</th>
+                                    <th>Entreprise</th>
+                                    <th>Cours</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($stats['recent_enrollments'] as $enrollment): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($enrollment['first_name'] . ' ' . $enrollment['last_name']) ?></td>
+                                    <td><?= htmlspecialchars($enrollment['email']) ?></td>
+                                    <td><?= htmlspecialchars($enrollment['company']) ?></td>
+                                    <td><?= htmlspecialchars($enrollment['course_title']) ?></td>
+                                    <td><?= date('d/m/Y H:i', strtotime($enrollment['created_at'])) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Messages Stat -->
-            <div class="col-md-4 mb-4">
-                <div class="card stat-card bg-warning text-dark">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h5 class="card-title">Unread Messages</h5>
-                                <h2><?= $stats['messages'] ?></h2>
-                            </div>
-                            <i class="bi bi-envelope" style="font-size: 2rem;"></i>
-                        </div>
-                        <a href="messages/" class="text-dark stretched-link"></a>
+                    <div class="text-end">
+                        <a href="enrollments/list.php" class="btn btn-primary">Voir toutes les inscriptions</a>
                     </div>
-                </div>
+                <?php else: ?>
+                    <div class="alert alert-info">Aucune inscription récente.</div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
