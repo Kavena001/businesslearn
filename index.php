@@ -119,7 +119,7 @@ $testimonials = $db->getRows("SELECT * FROM testimonials WHERE featured = 1 ORDE
                         <div class="card-body">
                             <h5 class="card-title"><?= htmlspecialchars($course['title']) ?></h5>
                             <p class="card-text"><?= htmlspecialchars($course['short_description']) ?></p>
-                            <a href="courses/course<?= $course['id'] ?>.php" 
+                            <a href="course.php?id=<?= $course['id'] ?>" 
                                class="btn btn-primary">
                                En savoir plus
                             </a>
