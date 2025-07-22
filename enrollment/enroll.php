@@ -1,12 +1,14 @@
 <?php
-require '../includes/config.php';
-require '../includes/db.php';
-require '../includes/header.php';
-
-// Start session if not already started
+// Start session at the very beginning
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Buffer output to prevent header errors
+ob_start();
+
+require '../includes/config.php';
+require '../includes/db.php';
 
 $success = false;
 $error = '';
@@ -30,27 +32,23 @@ if (!$course) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Validate and sanitize inputs
-        $firstName = trim(filter_input(INPUT_POST, 'firstName', FILTER_SANITIZE_STRING));
-        $lastName = trim(filter_input(INPUT_POST, 'lastName', FILTER_SANITIZE_STRING));
-        $email = trim(filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL));
-        $phone = trim(filter_input(INPUT_POST, 'phone', FILTER_SANITIZE_STRING));
-        $company = trim(filter_input(INPUT_POST, 'company', FILTER_SANITIZE_STRING));
-        $position = trim(filter_input(INPUT_POST, 'position', FILTER_SANITIZE_STRING));
-        $employeeCount = trim(filter_input(INPUT_POST, 'employeeCount', FILTER_SANITIZE_STRING));
-        $paymentMethod = trim(filter_input(INPUT_POST, 'paymentOption', FILTER_SANITIZE_STRING));
+        $firstName = trim(htmlspecialchars($_POST['firstName'] ?? '', ENT_QUOTES, 'UTF-8'));
+        $lastName = trim(htmlspecialchars($_POST['lastName'] ?? '', ENT_QUOTES, 'UTF-8'));
+        $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+        $phone = trim(htmlspecialchars($_POST['phone'] ?? '', ENT_QUOTES, 'UTF-8'));
+        $company = trim(htmlspecialchars($_POST['company'] ?? '', ENT_QUOTES, 'UTF-8'));
+        $position = trim(htmlspecialchars($_POST['position'] ?? '', ENT_QUOTES, 'UTF-8'));
+        $employeeCount = trim(htmlspecialchars($_POST['employeeCount'] ?? '', ENT_QUOTES, 'UTF-8'));
+        $paymentMethod = trim(htmlspecialchars($_POST['paymentOption'] ?? '', ENT_QUOTES, 'UTF-8'));
         $termsAccepted = isset($_POST['terms']) ? 1 : 0;
 
         // Basic validation
-        if (empty($firstName) || empty($lastName) || empty($email) || empty($phone) || 
+        if (empty($firstName) || empty($lastName) || $email === false || empty($phone) || 
             empty($company) || empty($position) || empty($paymentMethod) || !$termsAccepted) {
             throw new Exception("Tous les champs obligatoires doivent être remplis.");
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception("Adresse email invalide.");
-        }
-
-        // Insert enrollment with all required fields
+        // Insert enrollment
         $sql = "INSERT INTO enrollments (
                     course_id, 
                     first_name, 
@@ -75,15 +73,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $position, 
             $employeeCount, 
             $paymentMethod,
-            'pending' // Explicitly setting status
+            'pending'
         ];
         
         $enrollmentId = $db->insert($sql, $params);
         
         if ($enrollmentId) {
-            $success = true;
-            
-            // Store in session for admin notification
             $_SESSION['new_enrollment'] = [
                 'id' => $enrollmentId,
                 'course' => $course['title'],
@@ -91,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'email' => $email
             ];
             
-            // Redirect to prevent form resubmission
+            ob_end_clean();
             header("Location: enroll.php?course_id=$courseId&success=1");
             exit;
         } else {
@@ -106,9 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Check for success redirect
 if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_SESSION['new_enrollment'])) {
     $success = true;
-    $firstName = $_SESSION['new_enrollment']['name'];
-    $email = $_SESSION['new_enrollment']['email'];
+    $firstName = explode(' ', $_SESSION['new_enrollment']['name'])[0] ?? '';
+    $email = $_SESSION['new_enrollment']['email'] ?? '';
 }
+
+require '../includes/header.php';
 ?>
 
 <section class="py-5">
@@ -255,7 +252,6 @@ if (isset($_GET['success']) && $_GET['success'] == 1 && isset($_SESSION['new_enr
 <?php require '../includes/footer.php'; ?>
 
 <script>
-// Form validation
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('enrollmentForm');
     
